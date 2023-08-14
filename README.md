@@ -1,5 +1,6 @@
 # Facebook-API-Python
 
+Unofficial Facebook API library based in Facebook for Android V207.
 
 # Server's routes
 
