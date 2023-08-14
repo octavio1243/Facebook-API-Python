@@ -2,7 +2,7 @@
 
 
 # Server's routes
--
+
 | Description | Method HTTP | Endpoint | Request Body | Response Body | 
 |-|-|-|-|-|
 | Log in | POST | /login | {"email":"foo@foo.com","password":"foo1234"} | {"access_token":"EAAAA...","uid":"XXX..."} |
