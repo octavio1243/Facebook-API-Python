@@ -2,6 +2,12 @@
 
 Unofficial Facebook API library based in Facebook for Android V207.
 
+# How to run
+
+```
+python -m FacebookAPI.Server
+```
+
 # Server's routes
 
 | Description | Method HTTP | Endpoint | Request Body | Response Body | 
