@@ -2,6 +2,11 @@
 
 Unofficial Facebook API library based in Facebook for Android V207.
 
+If you like this project:  
+
+**Bitcoin**: 342eSZjvzW2GWkJAraGCY5T72zB47sKoDN
+**Ethereum**: 0xE0e14A8103b81e2984cF69a0c3646C43CE0DEc2c
+
 # How to run
 
 ```
