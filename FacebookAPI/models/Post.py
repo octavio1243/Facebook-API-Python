@@ -1,9 +1,12 @@
 from FacebookAPI.enums.XFbFriendlyName import XFbFriendlyName
 from FacebookAPI.config import GRAPH_URL
-import random
+from FacebookAPI.config import MBASIC_URL
 import requests
+from bs4 import BeautifulSoup
+import brotli
+import re
+import random
 import json
-
 
 class Post():
     
@@ -20,73 +23,116 @@ class Post():
         self.description = description
         self.group = group
     
-    def upload_and_generate_json_image(self, image_index, image, composer_session_id, idempotence_token):
+    def decode_content(self, response):
+        content = response.content
+        try:
+            if response.headers.get('Content-Encoding') == 'br':
+                content = brotli.decompress(response.content).decode('utf-8')
+            elif response.headers.get('Content-Encoding') == 'gzip':
+                print("Make the implementation to decode the content")
+        except:
+            pass
+            #print("Error to decode the content. Maybe it isn't encoded")
+        #print(content,"\n\n")
+        return content
 
-        url = f"{GRAPH_URL}/me/photos"
-        self.user.device.app.headers.set_header("X-Fb-Friendly-Name", XFbFriendlyName.UPLOAD_PHOTO.value)
-        self.user.device.app.headers.set_header("Authorization", f"OAuth {self.user.access_token}")
-        headers = self.user.device.app.headers.get_all_headers()
-        
-        idempotence_token=idempotence_token+"_"+str(random.randint(100000000, 999999999))+"_"+str(image_index)
-        
-        if self.group.id!=0:
-            source_type="group"
-        else:
-            source_type="timeline"
-        
-        files={
-        'published':(None,'false',('text/plain; charset=UTF-8',{'Content-Transfer-Encoding': '8bit'})),
-        'audience_exp':(None,'true',('text/plain; charset=UTF-8',{'Content-Transfer-Encoding': '8bit'})),
-        'qn':(None,composer_session_id,('text/plain; charset=UTF-8',{'Content-Transfer-Encoding': '8bit'})),
-        'composer_session_id':(None,composer_session_id,('text/plain; charset=UTF-8',{'Content-Transfer-Encoding': '8bit'})),
-        'idempotence_token':(None,idempotence_token,('text/plain; charset=UTF-8',{'Content-Transfer-Encoding': '8bit'})),
-        'source_type':(None,source_type,('text/plain; charset=UTF-8',{'Content-Transfer-Encoding': '8bit'})),
-        'locale':(None,'es_LA',('text/plain; charset=UTF-8',{'Content-Transfer-Encoding': '8bit'})),
-        'client_country_code':(None,'AR',('text/plain; charset=UTF-8',{'Content-Transfer-Encoding': '8bit'})),
-        'fb_api_req_friendly_name':(None,'upload-photo',('text/plain; charset=UTF-8',{'Content-Transfer-Encoding': '8bit'})),
-        'fb_api_caller_class':(None,'com.facebook.photos.upload.uploaders.MultiPhotoUploader',('text/plain; charset=UTF-8',{'Content-Transfer-Encoding': '8bit'})),
-        'source':('3eae63ee-3f93818b1cc08729.tmp',image.get_binary(),('image/jpeg',{'Content-Transfer-Encoding': 'binary'}))
+    def get_headers(self, previous_url):
+        headers = {
+        "Cache-Control": "max-age=0", 
+        "Upgrade-Insecure-Requests": "1", 
+        "Origin": f"{MBASIC_URL}", 
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.60 Safari/537.36", 
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7", 
+        "Sec-Fetch-Site": "same-origin", 
+        "Sec-Fetch-Mode": "navigate", 
+        "Sec-Fetch-User": "?1", 
+        "Sec-Fetch-Dest": "document",
+        "Accept-Encoding": "gzip, deflate, br", 
+        "Accept-Language": "es-ES,es;q=0.9", 
+        "Priority": "u=0, i"
         }
 
-        try:
-            r= requests.post(url, headers = headers, files = files, timeout = 5)
-            
-            """
-            print(f"URL: {r.request.url}")
-            print(f"Método: {r.request.method}")
-            print(f"Encabezados: {r.request.headers}")
-            print(f"Cuerpo de la solicitud: {r.request.body}")
-            """
-            print(r.text)
-            
-            r_json=r.json()
-            id=str(r_json["id"])
-        
-            if self.group.id!=0:     
-                json_image={
-                "photo":
-                    {
-                    "unified_stories_media_source":"CAMERA_ROLL",
-                    "id":id
-                    }
-                }
-            else:
-                json_image={
-                "photo":
-                    {
-                    "media_source_info":
-                        {
-                        "source":"UPLOADED",
-                        "entry_point":"OTHER"
-                        },
-                    "id":id
-                    }
-                }
-            return json_image
-        except:
-            raise Exception("Error. It can not upload image to group")
+        if previous_url:
+            headers["Referer"] = f"{previous_url}"
 
-    def make(self):
+        return headers
+
+    def get_next_request(self, response):
+        content = self.decode_content(response)
+        soup = BeautifulSoup(content, 'html.parser')
+        form = soup.find('form', method='post')
+        action = form.get('action')
+        inputs = form.find_all('input')
+        text_areas = form.find_all('textarea')
+        
+        require_text_area = None
+        required_files = {}
+        data ={}
+        for input in inputs:
+            key = input.get('name')
+            value = input.get('value','')
+            if input.get('type') == "file":
+                required_files[key]=b""
+            elif key in data:
+                if isinstance(data[key], list):
+                    data[key].append(value)
+                else:
+                    data[key] = [data[key], value]
+            else:
+                data[key] = value
+        for text_area in text_areas:
+            data[text_area.get('name')] = text_area.get('value','')
+            require_text_area = text_area.get('name')
+        
+        headers = self.get_headers(response.url)
+        return action, headers, data, required_files, require_text_area
+
+    def get_permalink(self, response):
+        pattern = re.compile(r'.*\/permalink\/\d+')
+        content = self.decode_content(response)
+        soup = BeautifulSoup(content, 'html.parser')
+        articles = soup.find_all('article')
+        for article in articles:
+            links =article.find_all('a')
+            for link in links:
+                href = link.get("href",None)
+                #print(link," - ",href)
+                match = pattern.search(href)
+                if match:
+                    return match.group(0)
+        return "Error: Link not founded"
+
+    def make_next_request(self, response,num):
+        action, headers, data, required_files, require_text_area = self.get_next_request(response)
+        url = f"{MBASIC_URL}{action}"
+        #print(f"POST to URL: {url}")
+        if require_text_area and num == 3:
+            data[require_text_area]=f"{self.description}"
+        if required_files:
+            if len(self.images)>len(required_files):
+                raise Exception(f"The files are too many. The max is {len(required_files)}")
+            for i, key in enumerate(required_files):
+                if i < len(self.images):
+                    required_files[key]=self.images[i].get_binary()
+            #print(required_files)
+            response = requests.post(url, data=data, files=required_files, headers=headers, cookies=self.user.get_cookies(),timeout=20)
+        else:  
+            response = requests.post(url, data=data, headers=headers, cookies=self.user.get_cookies(),timeout=10)
+        
+        if num<3:
+            link = self.make_next_request(response,num+1)
+        else:
+            link = self.get_permalink(response)
+        return link
+
+    def make_with_images(self):        
+        group_url = f"{MBASIC_URL}/groups/{self.group.id}"
+        headers = self.get_headers(None)
+        response = requests.get(group_url, headers=headers, cookies=self.user.get_cookies(),timeout=10)
+        link = self.make_next_request(response,1)
+        return {"post_url": link}
+    
+    def make_without_images(self):
         client_mutation_id = self.user.device.app.get_token()
         composer_session_id = self.user.device.app.get_token()
         deduplication_id=composer_session_id
@@ -193,10 +239,7 @@ class Post():
         "max_comment_replies":3,
         "image_low_height":2048
         }
-            
-        for image_index,image in enumerate(self.images):
-            json_variables["input"]["attachments"].append(self.upload_and_generate_json_image(image_index,image,composer_session_id,idempotence_token))
-
+        
         if (self.group.id!="0"): # post for profile
             json_variables["input"]["audiences"].append(
                 {
@@ -254,9 +297,15 @@ class Post():
         
         r=requests.post(url, headers = headers, data = data, timeout = 5)
         
-        print(r.text)
+        #print(r.text)
 
         r_json=r.json()
         url=r_json["data"]["story_create"]["story"]["url"]
         
-        return {"url":url}
+        return {"post_url":url}
+    
+    def make(self):        
+        if self.images:
+            return self.make_with_images()
+        else:
+            return self.make_without_images()

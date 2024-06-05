@@ -2,14 +2,12 @@ from FacebookAPI.models.Device import Device
 from FacebookAPI.models.Group import Group
 from FacebookAPI.models.Post import Post
 from FacebookAPI.models.User import User
+from FacebookAPI.models.Image import Image
 from flask import Flask, jsonify, request
+import json
 
 app=Flask(__name__)
 
-"""
-Request body: {"email":"user@email.com","password":"pass1243!"}
-Response body: {"access_token":"EAAAA...","uid":"XXX..."}
-"""
 @app.route('/login',methods=['POST'])
 def login():
     json_request=request.json
@@ -21,10 +19,6 @@ def login():
     
     return jsonify(user.login())
 
-"""
-Request body: {"email":"user@email.com","uid":"YYY...","login_first_factor":"ZZZ...","pin":"XXX..."}
-Response body: {"access_token":"EAAAA...","uid":"XXX..."}
-"""
 @app.route('/verify',methods=['POST'])
 def verify_2FA():
     json_request=request.json
@@ -38,56 +32,50 @@ def verify_2FA():
     
     return jsonify(user.verify_2FA(uid = uid, login_first_factor = login_first_factor, pin = pin))
 
-"""
-Request body: {"access_token":"EAAAA...","uid":"XXX..."}
-Response body: {"full_name":"...","image_name":"..."}
-"""
 @app.route('/get_user_information',methods=['POST'])
 def get_user_information():
     json_request=request.json
     access_token=json_request["access_token"]
     uid=json_request["uid"]
+    session_cookies=json_request["session_cookies"]
     
     device = Device()
-    user = User(device = device, access_token = access_token, uid = uid)
+    user = User(device = device, access_token = access_token, uid = uid, session_cookies = session_cookies)
 
     return jsonify(user.get_user_information())
 
-"""
-Request body: {"access_token":"EAAAA...","uid":"XXX..."}
-Response body: { "groups":[{"name": "...","id": "...","url": "..."}, ... ] }
-"""
 @app.route('/get_groups',methods=['POST'])
 def get_groups():
     json_request=request.json
     access_token=json_request["access_token"]
     uid=json_request["uid"]
-    
+    session_cookies=json_request["session_cookies"]
+
     device = Device()
-    user = User(device = device, access_token = access_token, uid = uid )
+    user = User(device = device, access_token = access_token, uid = uid, session_cookies = session_cookies)
 
     return jsonify(user.get_groups())
 
-
-"""
-Request body: {"access_token":"EAAAA...","uid":"XXX...", "group_id":"YYY...", "description":"..."}
-Response body: {"post_url":"https://..."}
-"""
 @app.route('/make_post',methods=['POST'])
 def make_post():
-    json_request=request.json
-    access_token=json_request["access_token"]
-    uid=json_request["uid"]
-    description=json_request["description"]
-    group_id=json_request["group_id"]
+    json_data = request.form.get('json')
+    if json_data:
+        json_data = json.loads(json_data)
+    binary_images = request.files.getlist('images')
+    
+    access_token=json_data["access_token"]
+    uid=json_data["uid"]
+    session_cookies=json_data["session_cookies"]
+    description=json_data["description"]
+    group_id=json_data["group_id"]
     
     device = Device()
-    user = User(device = device, access_token = access_token, uid = uid)
+    user = User(device = device, access_token = access_token, uid = uid, session_cookies = session_cookies)
     group = Group(id = group_id)
-    post = Post(user = user, description = description, group = group)
-
+    images = [Image(binary = binary_image) for binary_image in binary_images]
+    post = Post(user = user, description = description, group = group, images=images)
+    
     return jsonify(post.make())
-
 
 if __name__ == '__main__':
     app.run(debug=True,port=4000)

@@ -12,17 +12,18 @@ import json
 
 class User():
     
-    def __init__(self, device = None, email = None, password = None, access_token = None, uid = None):
+    def __init__(self, device = None, email = None, password = None, access_token = None, uid = None, session_cookies = []):
         if device is None:
             raise Exception("The user require an Device")
         if not(email is None and password is None) and not(access_token is None and uid is None):
-            raise Exception("The user require (email and password) or (access_token and uid)") 
+            raise Exception("The user require (email and password) or (access_token and uid and session_cookies)") 
         self.device = device
         self.email=email
         self.password=password
+        self.full_name=""
         self.access_token=access_token
         self.uid=uid
-        self.full_name=""
+        self.session_cookies = session_cookies
 
     def sign_login_body(self, data, login):
         if login:
@@ -68,12 +69,14 @@ class User():
         
         data["sig"] = self.sign_login_body(data.copy(),True)
         r=requests.post(url, headers=headers, data=data,timeout=5)
-        r_json=r.json()
         
+        r_json=r.json()
+        #print(r_json)
         try:
             self.access_token=str(r_json["access_token"])
             self.uid=str(r_json["uid"])
-            return {"access_token":self.access_token,"uid":self.uid}
+            self.session_cookies = r_json["session_cookies"]
+            return {"access_token":self.access_token,"uid":self.uid,"session_cookies":self.session_cookies}
         except:
             message=r_json["error_msg"]
             code=r_json["error_code"]
@@ -132,11 +135,12 @@ class User():
 
         r=requests.post(url, headers=headers, data=data)
         r_json=r.json()
-        
+        #print(r_json)
         try:
             self.access_token=str(r_json["access_token"])
             self.uid = uid
-            return {"access_token":self.access_token,"uid":self.uid}
+            self.session_cookies = r_json["session_cookies"]
+            return {"access_token":self.access_token,"uid":self.uid,"session_cookies":self.session_cookies}
         except: # incorrect pin
             message=r_json["error_msg"]
             code=r_json["error_code"]
@@ -224,3 +228,9 @@ class User():
             raise Exception("Error to get user's groups")
         
         return {"number_of_groups": number_of_groups, "groups": groups}    
+
+    def get_cookies(self):
+        cookies = {}
+        for s in self.session_cookies:
+            cookies[s["name"]]=s["value"]
+        return cookies

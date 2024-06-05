@@ -1,5 +1,6 @@
 import os
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-AUTH_URL = "https://b-api.facebook.com:443"
-GRAPH_URL = "https://graph.facebook.com:443"
+AUTH_URL = "https://b-api.facebook.com"
+GRAPH_URL = "https://graph.facebook.com"
+MBASIC_URL = "https://mbasic.facebook.com"
