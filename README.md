@@ -18,7 +18,7 @@ python -m FacebookAPI.Server
 
 | Description | Method HTTP | Endpoint | Body Type | Request Body | Response Body | 
 |-|-|-|-|-|
-| Log in | POST | /login | Json | {"email": "...", "password": "..."} | {"access_token": "EAAAA...", "uid": "XXX...", "session_cookies":[{"name": "...","value": "..."}, ...]} <br> Or: <br> {"code": 406, "login_first_factor": "...", "message": "Login approvals are on. Expect an SMS shortly with a code to use for log in (406)", "uid": "..."} |
+| Log in | POST | /login | Json | {"email": "...", "password": "..."} | {"access_token": "EAAAA...", "uid": "XXX...", "session_cookies":[{"name": "...","value": "..."}, ...]} Or: {"code": 406, "login_first_factor": "...", "message": "Login approvals are on. Expect an SMS shortly with a code to use for log in (406)", "uid": "..."} |
 | Security login code | POST | /verify | Json | {"email": "...","uid": "XXX...", "login_first_factor": "YYY...", "pin": "ZZZ..."} | {"access_token": "EAAAA...", "uid": "XXX...", "session_cookies":[{"name": "...","value": "..."}, ...]} | 
 | Get user information | POST | /get_user_information | Json | {"access_token": "EAAAA...", "uid": "XXX...", "session_cookies":[{"name": "...","value": "..."}, ...]} | {"full_name": "...", "image_name": "..."} |
 | Get all groups | POST | /get_groups | Json | {"access_token": "EAAAA...", "uid": "XXX...", "session_cookies":[{"name": "...","value": "..."}, ...]} | { "groups":[{"name": "...", "id": "...","url": "..."}, ... ] }|
