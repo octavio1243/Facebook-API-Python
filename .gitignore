@@ -3,6 +3,7 @@
 #Temp files
 *.sqlite
 post.py
+Graph/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
