@@ -10,17 +10,28 @@ import requests
 import json_repair
 import json
 
+def uid_required(func):
+    def wrapper(self, *args, **kwargs):
+        self.get_user_information(profile_pic_required = False)
+        return func(self, *args, **kwargs)
+    return wrapper
+
 class User():
     
     def __init__(self, device = None, email = None, password = None, access_token = None, uid = None, session_cookies = []):
         if device is None:
             raise Exception("The user require an Device")
-        if not(email is None and password is None) and not(access_token is None and uid is None):
-            raise Exception("The user require (email and password) or (access_token and uid and session_cookies)") 
+        if not(email is None and password is None) and not(access_token is None):
+            raise Exception("The user require (email and password) or (access_token)") 
         self.device = device
         self.email=email
         self.password=password
         self.full_name=""
+        self.birthday=""
+        self.gender=""
+        self.location=""
+        self.relationship_status=""
+        self.profile_pic=None
         self.access_token=access_token
         self.uid=uid
         self.session_cookies = session_cookies
@@ -38,6 +49,8 @@ class User():
         return self.device.app.get_signature(str_data)
 
     def login(self):
+        if self.uid is None:
+            raise Exception("The user's object require an id") 
         
         url = f"{AUTH_URL}/method/auth.login"
         
@@ -97,7 +110,9 @@ class User():
             """
        
     def verify_2FA(self, uid, login_first_factor, pin):
-
+        if self.uid is None:
+            raise Exception("The user's object require an id") 
+        
         url = f"{AUTH_URL}/method/auth.login"
         self.device.app.headers.set_header("X-Fb-Friendly-Name", XFbFriendlyName.AUTHENTICATE.value)
         #self.device.app.headers.set_header("Authorization", user_agent)
@@ -146,8 +161,8 @@ class User():
             code=r_json["error_code"]
             print(message,type,code)  
             return {"message":message,"code":code}
-
-    def get_user_information(self):
+    
+    def get_user_image(self):
         url = f"{GRAPH_URL}/graphql"
         
         self.device.app.headers.set_header("X-Fb-Friendly-Name", XFbFriendlyName.USER_TIMELINE_QUERY.value)
@@ -172,16 +187,48 @@ class User():
         
         r=requests.post(url, headers=headers, data=data)
         r_json = json_repair.loads(r.text)
-                
+        
+        user_image = None 
+        
         try:
-            full_name=r_json["data"]["user"]["name"]
             image_url=r_json["data"]["user"]["profile_photo"]["image"]["uri"]
             user_image = Image(image_url)
         except:
+            print("Error to get user image")
+        
+        return user_image
+    
+    def get_user_information(self, profile_pic_required = True):
+        url = f"{GRAPH_URL}/v20.0/me?access_token={self.access_token}&fields=email,birthday,gender,location,relationship_status,id,name"
+        
+        r=requests.get(url)                
+        r_json = r.json()
+        print(r_json)
+
+        try:
+            self.email=r_json["email"]
+            self.full_name=r_json["name"]
+            self.birthday=r_json["birthday"]
+            self.gender=r_json["gender"]
+            self.location=r_json["location"]["name"]
+            self.relationship_status=r_json["relationship_status"]
+            self.uid=r_json["id"]
+            self.profile_pic = self.get_user_image() if profile_pic_required else None
+        except:
             raise Exception("Error to get user information")
             
-        return {"full_name":full_name,"image":user_image.get_binary() }
+        return {
+            "full_name": self.full_name,
+            "email":self.email,
+            "birthday": self.birthday,
+            "gender":self.gender,
+            "location":self.location,
+            "relationship_status":self.relationship_status,
+            "id":self.uid,
+            "profile_pic":self.profile_pic.url if self.profile_pic else None
+        }
 
+    @uid_required
     def get_groups(self):
         url = f"{GRAPH_URL}/graphql"
         

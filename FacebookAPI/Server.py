@@ -36,11 +36,9 @@ def verify_2FA():
 def get_user_information():
     json_request=request.json
     access_token=json_request["access_token"]
-    uid=json_request["uid"]
-    session_cookies=json_request["session_cookies"]
     
     device = Device()
-    user = User(device = device, access_token = access_token, uid = uid, session_cookies = session_cookies)
+    user = User(device = device, access_token = access_token)
 
     return jsonify(user.get_user_information())
 
@@ -48,31 +46,25 @@ def get_user_information():
 def get_groups():
     json_request=request.json
     access_token=json_request["access_token"]
-    uid=json_request["uid"]
-    session_cookies=json_request["session_cookies"]
 
     device = Device()
-    user = User(device = device, access_token = access_token, uid = uid, session_cookies = session_cookies)
+    user = User(device = device, access_token = access_token)
 
     return jsonify(user.get_groups())
 
 @app.route('/make_post',methods=['POST'])
 def make_post():
-    json_data = request.form.get('json')
-    if json_data:
-        json_data = json.loads(json_data)
-    binary_images = request.files.getlist('images')
+    json_request=request.json
     
-    access_token=json_data["access_token"]
-    uid=json_data["uid"]
-    session_cookies=json_data["session_cookies"]
-    description=json_data["description"]
-    group_id=json_data["group_id"]
+    access_token=json_request["access_token"]
+    description=json_request["description"]
+    group_id=json_request["group_id"]
+    images_urls=json_request.get("images_urls",[])
     
     device = Device()
-    user = User(device = device, access_token = access_token, uid = uid, session_cookies = session_cookies)
+    user = User(device = device, access_token = access_token)
     group = Group(id = group_id)
-    images = [Image(binary = binary_image) for binary_image in binary_images]
+    images = [Image(url = image_url) for image_url in images_urls]
     post = Post(user = user, description = description, group = group, images=images)
     
     return jsonify(post.make())
