@@ -49,9 +49,6 @@ class User():
         return self.device.app.get_signature(str_data)
 
     def login(self):
-        if self.uid is None:
-            raise Exception("The user's object require an id") 
-        
         url = f"{AUTH_URL}/method/auth.login"
         
         self.device.app.headers.set_header("X-Fb-Friendly-Name", XFbFriendlyName.AUTHENTICATE.value)
@@ -110,7 +107,7 @@ class User():
             """
        
     def verify_2FA(self, uid, login_first_factor, pin):
-        if self.uid is None:
+        if uid is None:
             raise Exception("The user's object require an id") 
         
         url = f"{AUTH_URL}/method/auth.login"
